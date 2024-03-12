@@ -2,7 +2,7 @@ import requests
 import xml.etree.ElementTree as et
 import pandas as pd
 
-from src.error import NotFoundError
+from error.error import NotFoundError
 
 class ANA:
 
