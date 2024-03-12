@@ -11,7 +11,61 @@ class ANA:
     def __init__(self) -> None:
         self.base_url = ANA.url
 
-    def list_all_stations(self, station_code:str = '', station_type:str = '',
+    def list_rivers(self, river_code: str = '') -> pd.DataFrame:
+        """
+        Method that returns all rivers
+
+        Parameters
+        ----------
+        river_code : str
+            Eight digit code of the station, unique identifier (Ex: 00047000, 90300000)
+
+        Returns
+        -------
+        Pandas DataFrame with states
+        """
+        url = f"{self.base_url}/HidroRio?codRio={river_code}"
+        response = requests.get(url=url)
+        
+        df = pd.read_xml(response.content, xpath=".//Table")
+        
+        df = df.rename(columns={
+            "Nome": "nome",
+            "Codigo": "codigo_rio",
+            "BaciaCodigo": "codigo_bacia",
+            "SubBaciaCodigo": "codigo_sub_bacia"
+        })
+        df = df[['nome','codigo_rio','codigo_bacia','codigo_sub_bacia']]
+        df = df.set_index('nome', drop=True)
+        return df
+    
+    def list_states(self, state_code:str = '') -> pd.DataFrame:
+        """
+        Method that returns all states
+
+        Parameters
+        state_code:str
+            State unique code
+
+        Returns
+            Pandas Dataframe with states
+        """
+        url = f"{self.base_url}/HidroEstado?codUf={state_code}"
+        response = requests.get(url=url)
+
+        df = pd.read_xml(response.content, xpath=".//Table")
+        
+        df = df.rename(columns={
+            "Nome": "nome",
+            "Sigla": "sigla",
+            "Codigo": "codigo",
+            "CodigoIBGE": "codigo_IGBE"
+        })
+        df = df[['nome','codigo_rio','codigo_bacia','codigo_sub_bacia']]
+        df = df.set_index('nome', drop=True)
+        return df
+    
+    def list_stations(self, station_code:str = '', station_type:str = '',
                            station_data:str = '', state:str = '',
                            agent_in_charge:str = '', river_name:str = '') -> pd.DataFrame:
         """
