@@ -11,31 +11,43 @@ class ANA:
     def __init__(self) -> None:
         self.base_url = ANA.url
 
-    def list_all_stations(self, station_code:int = '', station_type:str = '', station_data:str = '') -> pd.DataFrame:
+    def list_all_stations(self, station_code:str = '', station_type:str = '',
+                           station_data:str = '', state:str = '',
+                           agent_in_charge:str = '', river_name:str = '') -> pd.DataFrame:
         """
         Method that returns all the stations
 
         Parameters
+        station_code:str
+            Eight digit code of the station, unique identifier (Ex: 00047000, 90300000)
         station_type:str
-            Type of the station can be either F for fluviometric stations and P for pluviométric stations, if not passed returns all
+            Type of the station, can be either F for fluviometric stations and P for pluviometric stations, if not passed returns all
+        station_data:str
+            Data gathering type of the station, can be either T for telemetric stations and M for manual stations, if not passed returns all
+        state:str
+            State where the stations are located
+        agent_in_charge:str
+            Agent responsible for the station
+        river_name:str
+            Name of the river that the station is located
 
         Returns
-            List of all stations
+            Pandas Dataframe with stations information
         """ 
-        if station_code == '' or type(station_code) != int:
-            station_code = station_type = station_data = ''
+        station_code = str(station_code) if type(station_code) == int else station_code
+        if len(station_code) < 8:
+            station_code = (8 - len(station_code)) * '0' + station_code
+        if not station_data == '' and station_data in ['F','P']:
+            station_data = '1' if station_data == 'F' else '2'
         else:
-            if not station_data == '' and station_data in ['F','P']:
-                station_data = 1 if station_data == 'F' else 2
-            else:
-                station_data = ''
+            station_data = ''
 
-            if not station_type == '' and station_type in ['T','M']:
-                station_type = 1 if station_type == 'T' else 0
-            else:
-                station_type = ''
+        if not station_type == '' and station_type in ['T','M']:
+            station_type = '1' if station_type == 'T' else '0'
+        else:
+            station_type = ''
 
-        url = f"{self.base_url}/HidroInventario?codEstDE={station_code}&codEstATE=&tpEst={station_data}&nmEst=&nmRio=&codSubBacia=&codBacia=&nmMunicipio=&nmEstado=&sgResp=&sgOper=&telemetrica={station_type}"
+        url = f"{self.base_url}/HidroInventario?codEstDE={station_code}&codEstATE=&tpEst={station_data}&nmEst=&nmRio={river_name}&codSubBacia=&codBacia=&nmMunicipio=&nmEstado={state}&sgResp={agent_in_charge}&sgOper=&telemetrica={station_type}"
         response = requests.get(url=url)
 
         if response.status_code == 404:
