@@ -89,7 +89,7 @@ class ANA:
             Pandas Dataframe with stations information
         """ 
         station_code = str(station_code) if type(station_code) == int else station_code
-        if len(station_code) < 8:
+        if len(station_code) < 8 and station_code != '':
             station_code = (8 - len(station_code)) * '0' + station_code
         if not station_data == '' and station_data in ['F','P']:
             station_data = '1' if station_data == 'F' else '2'
@@ -103,37 +103,31 @@ class ANA:
 
         url = f"{self.base_url}/HidroInventario?codEstDE={station_code}&codEstATE=&tpEst={station_data}&nmEst=&nmRio={river_name}&codSubBacia=&codBacia=&nmMunicipio=&nmEstado={state}&sgResp={agent_in_charge}&sgOper=&telemetrica={station_type}"
         response = requests.get(url=url)
-
         if response.status_code == 404:
             raise NotFoundError("Response <404>: File was not found in the url")
         
-        tree = et.ElementTree(et.fromstring(response.content))
-        root = tree.getroot()
+        df = pd.read_xml(response.content, xpath=".//Table")
+        
+        df = df.rename(columns={
+            "Codigo": "codigo",
+            "Nome": "nome",
+            "Latitude": "latitude",
+            "Longitude": "longitude",
+            "Altitude": "altitude",
+            "AreaDrenagem": "area",
+            "nmEstado": "estado",
+            "nmMunicipio": "municipio",
+            "RioNome": "rio",
+            "TipoEstacao": "tipo",
+            "ResponsavelSigla": "responsavel",
+            "UltimaAtualizacao": "ultima_atualização",
+            "PeriodoTelemetricaInicio": "inicio_telemetria",
+            "PeriodoTelemetricaFim": "fim_telemetria",
+        })
+        df = df[['codigo','nome','latitude','longitude', 'altitude', 'area', 'estado', 'municipio', 'rio', 'tipo', 'responsavel', 'ultima_atualização', 'inicio_telemetria', 'fim_telemetria']]
+        df = df.set_index('nome', drop=True)
 
-        stations_list = []
-        for station in root.iter("Table"):
-            data = {
-                'codigo': [station.find("Codigo").text],
-                'nome': [station.find("Nome").text],
-                'latitude': [station.find('Latitude').text],
-                'longitude': [station.find('Longitude').text],
-                'altitude': [station.find('Altitude').text],
-                'area': [station.find('AreaDrenagem').text],
-                'estado': [station.find('nmEstado').text],
-                'municipio': [station.find('nmMunicipio').text],
-                'rio': [station.find('RioNome').text],
-                'tipo': [station.find('TipoEstacao').text],
-                'responsavel': [station.find('ResponsavelSigla').text],
-                'ultima_alteracao':[station.find('UltimaAtualizacao').text],
-                'inicio_telemetria':[station.find('PeriodoTelemetricaInicio').text],
-                "fim_telemetria": [station.find("PeriodoTelemetricaFim").text]
-            }
-            df = pd.DataFrame.from_dict(data)
-            df = df.set_index('codigo', drop=True)
-            stations_list.append(df)
-
-        request_df = pd.concat(stations_list)
-        return request_df             
+        return df             
 
 
         
