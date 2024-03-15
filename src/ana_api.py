@@ -1,8 +1,8 @@
 import requests
-import xml.etree.ElementTree as et
+import datetime
 import pandas as pd
 
-from error.error import NotFoundError
+from error.error import *
 
 class ANA:
 
@@ -26,6 +26,8 @@ class ANA:
         """
         url = f"{self.base_url}/HidroRio?codRio={river_code}"
         response = requests.get(url=url)
+        if response.status_code == 404:
+            raise NotFoundError
         
         df = pd.read_xml(response.content, xpath=".//Table")
         
@@ -39,20 +41,24 @@ class ANA:
         df = df.set_index('nome', drop=True)
         return df
     
-    def list_states(self, state_code:str = '') -> pd.DataFrame:
+    def list_states(self, state_code: str = '') -> pd.DataFrame:
         """
         Method that returns all states
 
         Parameters
+        ----------
         state_code:str
             State unique code
 
         Returns
+        -------
             Pandas Dataframe with states
         """
         url = f"{self.base_url}/HidroEstado?codUf={state_code}"
         response = requests.get(url=url)
-
+        if response.status_code == 404:
+            raise NotFoundError
+        
         df = pd.read_xml(response.content, xpath=".//Table")
         
         df = df.rename(columns={
@@ -65,13 +71,14 @@ class ANA:
         df = df.set_index('nome', drop=True)
         return df
     
-    def list_stations(self, station_code:str = '', station_type:str = '',
-                           station_data:str = '', state:str = '',
-                           agent_in_charge:str = '', river_name:str = '') -> pd.DataFrame:
+    def list_stations(self, station_code: str = '', station_type: str = '',
+                           station_data: str = '', state: str = '',
+                           agent_in_charge: str = '', river_name: str = '') -> pd.DataFrame:
         """
         Method that returns all the stations
 
         Parameters
+        ----------
         station_code:str
             Eight digit code of the station, unique identifier (Ex: 00047000, 90300000)
         station_type:str
@@ -86,6 +93,7 @@ class ANA:
             Name of the river that the station is located
 
         Returns
+        -------
             Pandas Dataframe with stations information
         """ 
         station_code = str(station_code) if type(station_code) == int else station_code
@@ -104,7 +112,7 @@ class ANA:
         url = f"{self.base_url}/HidroInventario?codEstDE={station_code}&codEstATE=&tpEst={station_data}&nmEst=&nmRio={river_name}&codSubBacia=&codBacia=&nmMunicipio=&nmEstado={state}&sgResp={agent_in_charge}&sgOper=&telemetrica={station_type}"
         response = requests.get(url=url)
         if response.status_code == 404:
-            raise NotFoundError("Response <404>: File was not found in the url")
+            raise NotFoundError
         
         df = pd.read_xml(response.content, xpath=".//Table")
         
@@ -129,8 +137,40 @@ class ANA:
 
         return df             
 
+    def get_data_per_station(self, start_date: str, end_date: str, station_code: str = '') -> pd.DataFrame:
+        '''
+        Parameters
+        ----------
 
+        start_date: str
+            Start of the period, string date in format YYYY-MM-DD. Datetime and Timestamp objects can be passed
+        end_date: str
+            End of the period, string date in format YYYY-MM-DD. Datetime and Timestamp objects can be passed
+        station_code: str
+            Eight digit code of the station, unique identifier (Ex: 00047000, 90300000)
+
+        Returns
+        -------
+            Pandas dataframe with all the information avaiable in the station for the desired period
+        '''
+        station_code = str(station_code) if type(station_code) == int else station_code
+        if len(station_code) < 8 and station_code != '':
+            station_code = (8 - len(station_code)) * '0' + station_code
+        if start_date == '' or end_date == '':
+            raise EmptyMandatoryParameter
+        if type(start_date) == datetime.date or type(start_date) == pd.Timestamp:
+            start_date = start_date.strftime('%Y-%m-%d')
+        if type(end_date) == datetime.date or type(end_date) == pd.Timestamp:
+            end_date = end_date.strftime('%Y-%m-%d')
+
+        url = f"{self.base_url}/DadosHidrometeorologicos?codEstacao={station_code}&dataInicio={start_date}&dataFim={end_date}"
         
+        response = requests.get(url=url)
+        if response.status_code == 404:
+            raise NotFoundError
+        return response
+        df = pd.read_xml(response.content, xpath='.//DadosHidrometeorologicos')
 
-
+        return df
+        
 
