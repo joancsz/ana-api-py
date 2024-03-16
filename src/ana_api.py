@@ -1,8 +1,9 @@
 import requests
-import xml.etree.ElementTree as et
+import datetime
 import pandas as pd
 
-from error.error import NotFoundError
+from error.error import *
+
 
 class ANA:
 
@@ -11,7 +12,7 @@ class ANA:
     def __init__(self) -> None:
         self.base_url = ANA.url
 
-    def list_rivers(self, river_code: str = '') -> pd.DataFrame:
+    def list_rivers(self, river_code: str = "") -> pd.DataFrame:
         """
         Method that returns all rivers
 
@@ -22,115 +23,275 @@ class ANA:
 
         Returns
         -------
-        Pandas DataFrame with states
+        Pandas DataFrame with river
         """
         url = f"{self.base_url}/HidroRio?codRio={river_code}"
         response = requests.get(url=url)
-        
+        if response.status_code == 404:
+            raise NotFoundError
+
+        Check(response.content)
+
         df = pd.read_xml(response.content, xpath=".//Table")
-        
-        df = df.rename(columns={
-            "Nome": "nome",
-            "Codigo": "codigo_rio",
-            "BaciaCodigo": "codigo_bacia",
-            "SubBaciaCodigo": "codigo_sub_bacia"
-        })
-        df = df[['nome','codigo_rio','codigo_bacia','codigo_sub_bacia']]
-        df = df.set_index('nome', drop=True)
+        df = df[["Nome", "Codigo", "BaciaCodigo", "SubBaciaCodigo"]]
+        df = df.set_index("nome", drop=True)
         return df
-    
-    def list_states(self, state_code:str = '') -> pd.DataFrame:
+
+    def list_states(self, state_code: str = "") -> pd.DataFrame:
         """
         Method that returns all states
 
         Parameters
+        ----------
         state_code:str
             State unique code
 
         Returns
+        -------
             Pandas Dataframe with states
         """
         url = f"{self.base_url}/HidroEstado?codUf={state_code}"
         response = requests.get(url=url)
+        if response.status_code == 404:
+            raise NotFoundError
+
+        Check(response.content)
 
         df = pd.read_xml(response.content, xpath=".//Table")
-        
-        df = df.rename(columns={
-            "Nome": "nome",
-            "Sigla": "sigla",
-            "Codigo": "codigo",
-            "CodigoIBGE": "codigo_IGBE"
-        })
-        df = df[['nome','codigo_rio','codigo_bacia','codigo_sub_bacia']]
-        df = df.set_index('nome', drop=True)
+        df = df[["Nome", "Sigla", "Codigo", "CodigoIBGE"]]
+        df = df.set_index("Nome", drop=True)
         return df
-    
-    def list_stations(self, station_code:str = '', station_type:str = '',
-                           station_data:str = '', state:str = '',
-                           agent_in_charge:str = '', river_name:str = '') -> pd.DataFrame:
+
+    def list_telemetric_stations(self, active: bool = "") -> pd.DataFrame:
         """
         Method that returns all the stations
 
         Parameters
-        station_code:str
-            Eight digit code of the station, unique identifier (Ex: 00047000, 90300000)
-        station_type:str
-            Type of the station, can be either F for fluviometric stations and P for pluviometric stations, if not passed returns all
-        station_data:str
-            Data gathering type of the station, can be either T for telemetric stations and M for manual stations, if not passed returns all
-        state:str
-            State where the stations are located
-        agent_in_charge:str
-            Agent responsible for the station
-        river_name:str
-            Name of the river that the station is located
+        ----------
+        active:bool
+             If the station is active or inactive, if not passed returns all
 
         Returns
-            Pandas Dataframe with stations information
-        """ 
-        station_code = str(station_code) if type(station_code) == int else station_code
-        if len(station_code) < 8 and station_code != '':
-            station_code = (8 - len(station_code)) * '0' + station_code
-        if not station_data == '' and station_data in ['F','P']:
-            station_data = '1' if station_data == 'F' else '2'
+        -------
+            Pandas Dataframe with telemetric stations
+        """
+        if active != "" and active == type(bool) or active in [0, 1]:
+            active = 0 if active == True else 1
         else:
-            station_data = ''
+            active = ""
 
-        if not station_type == '' and station_type in ['T','M']:
-            station_type = '1' if station_type == 'T' else '0'
-        else:
-            station_type = ''
-
-        url = f"{self.base_url}/HidroInventario?codEstDE={station_code}&codEstATE=&tpEst={station_data}&nmEst=&nmRio={river_name}&codSubBacia=&codBacia=&nmMunicipio=&nmEstado={state}&sgResp={agent_in_charge}&sgOper=&telemetrica={station_type}"
+        url = (
+            f"{self.base_url}/ListaEstacoesTelemetricas?statusEstacoes={active}&origem="
+        )
         response = requests.get(url=url)
         if response.status_code == 404:
-            raise NotFoundError("Response <404>: File was not found in the url")
-        
+            raise NotFoundError
+
+        Check(response.content)
+
         df = pd.read_xml(response.content, xpath=".//Table")
-        
-        df = df.rename(columns={
-            "Codigo": "codigo",
-            "Nome": "nome",
-            "Latitude": "latitude",
-            "Longitude": "longitude",
-            "Altitude": "altitude",
-            "AreaDrenagem": "area",
-            "nmEstado": "estado",
-            "nmMunicipio": "municipio",
-            "RioNome": "rio",
-            "TipoEstacao": "tipo",
-            "ResponsavelSigla": "responsavel",
-            "UltimaAtualizacao": "ultima_atualização",
-            "PeriodoTelemetricaInicio": "inicio_telemetria",
-            "PeriodoTelemetricaFim": "fim_telemetria",
-        })
-        df = df[['codigo','nome','latitude','longitude', 'altitude', 'area', 'estado', 'municipio', 'rio', 'tipo', 'responsavel', 'ultima_atualização', 'inicio_telemetria', 'fim_telemetria']]
-        df = df.set_index('nome', drop=True)
+        df = df[
+            [
+                "NomeEstacao",
+                "CodEstacao",
+                "Bacia",
+                "SubBacia",
+                "Operadora",
+                "Responsavel",
+                "Municipio-UF",
+                "Latitude",
+                "Longitude",
+                "Altitude",
+                "CodRio",
+                "NomeRio",
+                "Origem",
+                "StatusEstacao",
+            ]
+        ]
 
-        return df             
+        df = df.set_index("NomeEstacao", drop=True)
+        return df
+
+    def list_stations(
+        self,
+        station_code: str = "",
+        station_type: str = "",
+        state: str = "",
+        agent_in_charge: str = "",
+        river_name: str = "",
+        telemetric: bool = "",
+    ) -> pd.DataFrame:
+        """
+        Method that returns all the stations
+
+        Parameters
+        ----------
+        station_code: str
+            Eight digit code of the station, unique identifier (Ex: 00047000, 90300000)
+        station_type: str
+            Type of the station, can be either F for fluviometric stations and P for pluviometric stations, if not passed returns all
+        state: str
+            State where the stations are located
+        agent_in_charge: str
+            Agent responsible for the station
+        river_name: str
+            Name of the river that the station is located
+        telemetric: bool
+            Data gathering type of the station, can be either T for telemetric stations and M for manual stations, if not passed returns all
+        Returns
+        -------
+            Pandas Dataframe with stations information
+        """
+        if not station_type == "" and station_type in ["F", "P"]:
+            station_type = "1" if station_type == "F" else "2"
+        else:
+            station_type = ""
+
+        if telemetric != "" and telemetric == type(bool) or telemetric in [0, 1]:
+            telemetric = 0 if telemetric == True else 1
+        else:
+            telemetric = ""
+
+        url = f"{self.base_url}/HidroInventario?codEstDE={station_code}&codEstATE=&tpEst={station_type}&nmEst=&nmRio={river_name}&codSubBacia=&codBacia=&nmMunicipio=&nmEstado={state}&sgResp={agent_in_charge}&sgOper=&telemetrica={telemetric}"
+        response = requests.get(url=url)
+        if response.status_code == 404:
+            raise NotFoundError
+
+        Check(response.content)
+
+        df = pd.read_xml(response.content, xpath=".//Table")
+        df = df[
+            [
+                "Codigo",
+                "Nome",
+                "Latitude",
+                "Longitude",
+                "Altitude",
+                "AreaDrenagem",
+                "nmEstado",
+                "nmMunicipio",
+                "RioNome",
+                "TipoEstacao",
+                "ResponsavelSigla",
+                "UltimaAtualizacao",
+                "PeriodoTelemetricaInicio",
+                "PeriodoTelemetricaFim",
+            ]
+        ]
+        date_columns = [
+            "UltimaAtualizacao",
+            "PeriodoTelemetricaInicio",
+            "PeriodoTelemetricaFim",
+        ]
+        df[date_columns] = pd.to_datetime(df[date_columns])
+        df = df.set_index("Nome", drop=True)
+
+        return df
+
+    def get_station_time_series(
+        self,
+        station_code: str,
+        data_info: str,
+        process_level: str,
+        start_date: str,
+        end_date: str = "",
+    ) -> pd.DataFrame:
+        """
+        Parameters
+        ----------
+
+        start_date: str
+            Start of the period, string date in format YYYY-MM-DD. Datetime and Timestamp objects can be passed
+        end_date: str
+            End of the period, string date in format YYYY-MM-DD. Datetime and Timestamp objects can be passed, if not passed returns until the end
+        station_code: str
+            Eight digit code of the station, unique identifier (Ex: 00047000, 90300000)
+        data_info: str
+            Data needed for the station, 'P' for Precipitation, 'I' for Inflows and 'L' for Level
+        process_level: str
+            Level of consistensy of the data, can either be 'R' for Raw and 'P' for processed
+
+        Returns
+        -------
+            Pandas dataframe with all the information avaiable in the station for the desired period
+        """
+
+        if type(start_date) == datetime.date or type(start_date) == pd.Timestamp:
+            start_date = start_date.strftime("%Y-%m-%d")
+        if type(end_date) == datetime.date or type(end_date) == pd.Timestamp:
+            end_date = end_date.strftime("%Y-%m-%d")
+
+        if data_info.upper() == "L":
+            data_info = 1
+        elif data_info.upper() == "I":
+            data_info = 3
+        else:
+            data_info = 2
+        process_level = 1 if process_level.upper() == "R" else 2
+
+        url = f"{self.base_url}/HidroSerieHistorica?codEstacao={station_code}&dataInicio={start_date}&dataFim={end_date}&tipoDados={data_info}&nivelConsistencia={process_level}"
+
+        response = requests.get(url=url)
+        if response.status_code == 404:
+            raise NotFoundError
+
+        Check(response.content)
+
+        df = pd.read_xml(response.content, xpath=".//SerieHistorica")
+        if data_info == 1:
+            columns = [
+                "EstacaoCodigo", "NivelConsistencia", "DataHora",
+                "MediaDiaria", "Maxima", "Minima",
+                "Media", "DiaMaxima", "DiaMinima",
+                "Cota01", "Cota02", "Cota03",
+                "Cota04", "Cota05", "Cota06",
+                "Cota07", "Cota08", "Cota09",
+                "Cota10", "Cota11", "Cota12",
+                "Cota13", "Cota14", "Cota15",
+                "Cota16", "Cota17", "Cota18",
+                "Cota19", "Cota20", "Cota21",
+                "Cota22", "Cota23", "Cota24",
+                "Cota25", "Cota26", "Cota27",
+                "Cota28", "Cota29", "Cota30",
+                "Cota31", "DataIns",
+            ]
+
+        elif data_info == 3:
+            columns = [
+                "EstacaoCodigo", "NivelConsistencia", "DataHora",
+                "MediaDiaria", "Maxima", "Minima",
+                "Media", "DiaMaxima", "DiaMinima",
+                "MediaAnual", "Vazao01", "Vazao02",
+                "Vazao03", "Vazao04", "Vazao05",
+                "Vazao06", "Vazao07", "Vazao08",
+                "Vazao09", "Vazao10", "Vazao11",
+                "Vazao12", "Vazao13", "Vazao14",
+                "Vazao15", "Vazao16", "Vazao17",
+                "Vazao18", "Vazao19", "Vazao20",
+                "Vazao21", "Vazao22", "Vazao23",
+                "Vazao24", "Vazao25", "Vazao26",
+                "Vazao27", "Vazao28", "Vazao29",
+                "Vazao30", "Vazao31",
+            ]
+
+        else:
+            columns = [
+                "DataHora", "Maxima", "Total",
+                "DiaMaxima", "NumDiasDeChuva", "TotalAnual",
+                "Chuva01", "Chuva02", "Chuva03",
+                "Chuva04", "Chuva05", "Chuva06",
+                "Chuva07", "Chuva08", "Chuva09",
+                "Chuva10", "Chuva11", "Chuva12",
+                "Chuva13", "Chuva14", "Chuva15",
+                "Chuva16", "Chuva17", "Chuva18",
+                "Chuva19", "Chuva20", "Chuva21",
+                "Chuva22", "Chuva23", "Chuva24",
+                "Chuva25", "Chuva26", "Chuva27",
+                "Chuva28", "Chuva29", "Chuva30",
+                "Chuva31", "DataIns",
+            ]
 
 
-        
-
-
-
+        df = df[columns]
+        df["DataHora"] = pd.to_datetime(df["DataHora"])
+        return df
