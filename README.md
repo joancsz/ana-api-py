@@ -15,7 +15,7 @@ git clone https://github.com/joancsz/ana-api-py.git
 Here's a basic example of how to use the ANA class to access data:
 
 ```python
-from ana_api import ANA
+from src.ana_api import ANA
 
 # Create an instance of the ANA class
 ana = ANA()
@@ -38,7 +38,7 @@ print(telemetric_stations_df)
 # Get time series data for a specific station
 station_code = '47000'  # Example station code
 time_series_df = ana.get_station_time_series(station_code, data_info='P')
-print("Time Series Data for Station:")
+print("Precipitation Time Series Data for Station:")
 print(time_series_df)
 ```
 
