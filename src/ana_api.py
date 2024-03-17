@@ -1,6 +1,7 @@
 import requests
 import datetime
 import pandas as pd
+from typing import Optional, Union, Literal
 
 from error.error import *
 
@@ -12,7 +13,7 @@ class ANA:
     def __init__(self) -> None:
         self.base_url = ANA.url
 
-    def list_rivers(self, river_code: str = "") -> pd.DataFrame:
+    def list_rivers(self, river_code: Optional[str] = "") -> pd.DataFrame:
         """
         Method that returns all rivers
 
@@ -27,17 +28,15 @@ class ANA:
         """
         url = f"{self.base_url}/HidroRio?codRio={river_code}"
         response = requests.get(url=url)
-        if response.status_code == 404:
-            raise NotFoundError
 
-        Check(response.content)
+        ResponseApiCheck(response)
 
         df = pd.read_xml(response.content, xpath=".//Table")
         df = df[["Nome", "Codigo", "BaciaCodigo", "SubBaciaCodigo"]]
         df = df.set_index("nome", drop=True)
         return df
 
-    def list_states(self, state_code: str = "") -> pd.DataFrame:
+    def list_states(self, state_code: Optional[str] = "") -> pd.DataFrame:
         """
         Method that returns all states
 
@@ -52,17 +51,15 @@ class ANA:
         """
         url = f"{self.base_url}/HidroEstado?codUf={state_code}"
         response = requests.get(url=url)
-        if response.status_code == 404:
-            raise NotFoundError
 
-        Check(response.content)
+        ResponseApiCheck(response)
 
         df = pd.read_xml(response.content, xpath=".//Table")
         df = df[["Nome", "Sigla", "Codigo", "CodigoIBGE"]]
         df = df.set_index("Nome", drop=True)
         return df
 
-    def list_telemetric_stations(self, active: bool = "") -> pd.DataFrame:
+    def list_telemetric_stations(self, active: Optional[bool] = "") -> pd.DataFrame:
         """
         Method that returns all the stations
 
@@ -84,10 +81,8 @@ class ANA:
             f"{self.base_url}/ListaEstacoesTelemetricas?statusEstacoes={active}&origem="
         )
         response = requests.get(url=url)
-        if response.status_code == 404:
-            raise NotFoundError
 
-        Check(response.content)
+        ResponseApiCheck(response)
 
         df = pd.read_xml(response.content, xpath=".//Table")
         df = df[
@@ -114,19 +109,19 @@ class ANA:
 
     def list_stations(
         self,
-        station_code: str = "",
-        station_type: str = "",
-        state: str = "",
-        agent_in_charge: str = "",
-        river_name: str = "",
-        telemetric: bool = "",
+        station_code: Optional[Union[str, int]] = "",
+        station_type: Optional[Literal["F", "P"]] = "",
+        state: Optional[str] = "",
+        agent_in_charge: Optional[str] = "",
+        river_name: Optional[str] = "",
+        telemetric: Optional[bool] = "",
     ) -> pd.DataFrame:
         """
         Method that returns all the stations
 
         Parameters
         ----------
-        station_code: str
+        station_code: Union[str, int]
             Eight digit code of the station, unique identifier (Ex: 00047000, 90300000)
         station_type: str
             Type of the station, can be either F for fluviometric stations and P for pluviometric stations, if not passed returns all
@@ -154,10 +149,8 @@ class ANA:
 
         url = f"{self.base_url}/HidroInventario?codEstDE={station_code}&codEstATE=&tpEst={station_type}&nmEst=&nmRio={river_name}&codSubBacia=&codBacia=&nmMunicipio=&nmEstado={state}&sgResp={agent_in_charge}&sgOper=&telemetrica={telemetric}"
         response = requests.get(url=url)
-        if response.status_code == 404:
-            raise NotFoundError
 
-        Check(response.content)
+        ResponseApiCheck(response)
 
         df = pd.read_xml(response.content, xpath=".//Table")
         df = df[
@@ -191,25 +184,25 @@ class ANA:
     def get_station_time_series(
         self,
         station_code: str,
-        data_info: str,
-        process_level: str,
-        start_date: str,
-        end_date: str = "",
+        data_info: Literal["P", "I", "L"],
+        process_level: Optional[Literal["R", "P"]] = "",
+        start_date: Optional[Union[str, datetime.date, pd.Timestamp]] = "",
+        end_date: Optional[Union[str, datetime.date, pd.Timestamp]] = "",
     ) -> pd.DataFrame:
         """
         Parameters
         ----------
 
-        start_date: str
-            Start of the period, string date in format YYYY-MM-DD. Datetime and Timestamp objects can be passed
-        end_date: str
+        start_date: Union[str, datetime.date, pd.Timestamp]
+            Start of the period, string date in format YYYY-MM-DD. Datetime and Timestamp objects can be passed, if not passed returns from the first date
+        end_date: Union[str, datetime.date, pd.Timestamp]
             End of the period, string date in format YYYY-MM-DD. Datetime and Timestamp objects can be passed, if not passed returns until the end
         station_code: str
             Eight digit code of the station, unique identifier (Ex: 00047000, 90300000)
-        data_info: str
+        data_info: Literal["P", "I", "L"]
             Data needed for the station, 'P' for Precipitation, 'I' for Inflows and 'L' for Level
-        process_level: str
-            Level of consistensy of the data, can either be 'R' for Raw and 'P' for processed
+        process_level: Literal["R", "P"]
+            Level of consistensy of the data, can either be 'R' for Raw and 'P' for processed, if not passed returns all
 
         Returns
         -------
@@ -232,10 +225,8 @@ class ANA:
         url = f"{self.base_url}/HidroSerieHistorica?codEstacao={station_code}&dataInicio={start_date}&dataFim={end_date}&tipoDados={data_info}&nivelConsistencia={process_level}"
 
         response = requests.get(url=url)
-        if response.status_code == 404:
-            raise NotFoundError
 
-        Check(response.content)
+        ResponseApiCheck(response)
 
         df = pd.read_xml(response.content, xpath=".//SerieHistorica")
         if data_info == 1:

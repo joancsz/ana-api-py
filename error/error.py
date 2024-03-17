@@ -10,11 +10,18 @@ class NoDataAvailable(Exception):
         self.info = info
         super().__init__(self.info)
 
-class Check:
+class ResponseApiCheck:
 
-    def __init__(self, content) -> None:
-        self.check_error(content) 
+    def __init__(self, response) -> None:
+        self.check_status(response.status_code)
+        self.check_error(response.content) 
 
+    @classmethod
+    def check_status(self, status_code):
+        if status_code == 404:
+            raise NotFoundError
+        
+    @classmethod
     def check_error(self, content):
         message = False
         root = etree.fromstring(content)
