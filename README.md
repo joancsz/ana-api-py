@@ -15,7 +15,7 @@ git clone https://github.com/joancsz/ana-api-py.git
 Here's a basic example of how to use the ANA class to access data:
 
 ```python
-from ana import ANA
+from ana_api import ANA
 
 # Create an instance of the ANA class
 ana = ANA()
