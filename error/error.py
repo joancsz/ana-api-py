@@ -1,4 +1,4 @@
-from lxml import etree
+import xml.etree.ElementTree as et
 
 class NotFoundError(Exception):
     def __init__(self, info="Response <404>: File was not found in the url"):
@@ -24,10 +24,14 @@ class ResponseApiCheck:
     @classmethod
     def check_error(self, content):
         message = False
-        root = etree.fromstring(content)
-        for table in root.findall(".//ErrorTable"):
-            message = table.findtext('Error')
+        
+        tree = et.ElementTree(et.fromstring(content))
+        root = tree.getroot()
+        for table in root.iter('ErrorTable'):
+            message = table.find('Error').text
 
         if message:
             raise NoDataAvailable(message)
+
+
 

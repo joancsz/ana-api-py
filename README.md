@@ -9,6 +9,18 @@ To use this class, simply clone the repository and import the `ANA` class into y
 ```bash
 git clone https://github.com/joancsz/ana-api-py.git
 ```
+## Environment 
+
+To be able to run the code you will need to install both requests and pandas libraries.
+
+```bash
+pip install requests pandas
+```
+If you are using conda:
+
+```bash
+conda install requests pandas
+```
 
 ## Usage
 

@@ -1,6 +1,6 @@
 import requests
-import datetime
 import pandas as pd
+import datetime
 from typing import Optional, Union, Literal
 
 from error.error import *
@@ -225,7 +225,7 @@ class ANA:
         url = f"{self.base_url}/HidroSerieHistorica?codEstacao={station_code}&dataInicio={start_date}&dataFim={end_date}&tipoDados={data_info}&nivelConsistencia={process_level}"
 
         response = requests.get(url=url)
-
+        
         ResponseApiCheck(response)
 
         df = pd.read_xml(response.content, xpath=".//SerieHistorica")
