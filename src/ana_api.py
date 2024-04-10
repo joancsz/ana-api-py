@@ -188,6 +188,7 @@ class ANA:
         process_level: Optional[Literal["R", "P"]] = "",
         start_date: Optional[Union[str, datetime.date, pd.Timestamp]] = "",
         end_date: Optional[Union[str, datetime.date, pd.Timestamp]] = "",
+        melt_data: bool = False
     ) -> pd.DataFrame:
         """
         Parameters
@@ -202,8 +203,9 @@ class ANA:
         data_info: Literal["P", "I", "L"]
             Data needed for the station, 'P' for Precipitation, 'I' for Inflows and 'L' for Level
         process_level: Literal["R", "P"]
-            Level of consistensy of the data, can either be 'R' for Raw and 'P' for processed, if not passed returns all
-
+            Level of consistensy of the data, can either be 'R' for Raw and 'P' for processed, if not passed returns all        
+        melt_data: bool
+            Melt data to time series at the end
         Returns
         -------
             Pandas dataframe with all the information avaiable in the station for the desired period
@@ -220,15 +222,19 @@ class ANA:
             data_info = 3
         else:
             data_info = 2
-        process_level = 1 if process_level.upper() == "R" else 2
 
-        url = f"{self.base_url}/HidroSerieHistorica?codEstacao={station_code}&dataInicio={start_date}&dataFim={end_date}&tipoDados={data_info}&nivelConsistencia={process_level}"
+        url = f"{self.base_url}/HidroSerieHistorica?codEstacao={station_code}&dataInicio={start_date}&dataFim={end_date}&tipoDados={data_info}&nivelConsistencia="
 
         response = requests.get(url=url)
         
         ResponseApiCheck(response)
 
         df = pd.read_xml(response.content, xpath=".//SerieHistorica")
+
+        if process_level != "":
+            process_level = 1 if process_level.upper() == "R" else 2
+            df = df.query("NivelConsistencia == @process_level")
+
         if data_info == 1:
             columns = [
                 "EstacaoCodigo", "NivelConsistencia", "DataHora",
@@ -267,6 +273,7 @@ class ANA:
 
         else:
             columns = [
+                "EstacaoCodigo", "NivelConsistencia",
                 "DataHora", "Maxima", "Total",
                 "DiaMaxima", "NumDiasDeChuva", "TotalAnual",
                 "Chuva01", "Chuva02", "Chuva03",
@@ -285,4 +292,43 @@ class ANA:
 
         df = df[columns]
         df["DataHora"] = pd.to_datetime(df["DataHora"])
+
+        if melt_data:
+            if df.empty:
+                raise NoDataAvailable
+            else:
+                df = self.melt_to_time_series(df)
+        return df
+
+    def melt_to_time_series(self, df: pd.DataFrame) ->  pd.DataFrame:
+        """
+        Parameters
+        ----------
+
+        df: pd.DataFrame
+            Dataframe to melt obtained from get_station_time_series method
+        Returns
+        -------
+            Pandas dataframe with all the information avaiable in the station for the desired period
+        """
+
+        if not len(df['NivelConsistencia'].unique()) == 1:
+            df = df[df['NivelConsistencia'] == 2]
+
+        c = [c for c in df.columns if c[-2:].isdigit()]
+        c.append('DataHora')
+        df = df[c]
+
+        df = df.melt(id_vars='DataHora', var_name='var', value_name='value')
+
+        var_name = df.iloc[0]['var'][:-2]
+
+        df['int_day'] = (df['var'].str[-2:]).astype(int)
+        df['DataHora'] = df['DataHora'] + pd.to_timedelta(df['int_day'] - 1, unit='D')
+        df = df[~((df['int_day'] == 31) & (df['DataHora'].dt.day == 1))]
+
+        df = df[['DataHora', 'value']]
+        df.columns = ['DataHora', var_name]
+        df = df.drop_duplicates(subset=['DataHora'])
+        df = df.set_index('DataHora').sort_index()
         return df

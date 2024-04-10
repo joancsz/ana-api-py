@@ -21,6 +21,7 @@ If you are using conda:
 ```bash
 conda install requests pandas
 ```
+It is important to note that you'll need at least Python 3.8 and pandas 1.3 to be able to use this code.
 
 ## Usage
 
