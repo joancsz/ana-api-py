@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ana-api"
+version = "1.0.0"
+description = "Fetch, download and write hydrological data from ANA HidroWeb (Brazil)"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Joan Souza" }]
+requires-python = ">=3.9"
+dependencies = ["requests", "pandas>=1.3"]
+
+[project.optional-dependencies]
+rest = ["pyyaml"]
+excel = ["openpyxl"]
+parquet = ["pyarrow"]
+all = ["pyyaml", "openpyxl", "pyarrow"]
+test = ["pytest"]
+
+[project.urls]
+Homepage = "https://github.com/joancsz/ana-api-py"
+
+[tool.setuptools]
+py-modules = ["ana"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

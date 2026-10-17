@@ -1,0 +1,4 @@
+# Copy to ana.yaml (git-ignored) to use the REST HidroWebService.
+# Register at https://www.ana.gov.br/hidrowebservice to get credentials.
+identificador: ""  # CPF/CNPJ used at registration
+senha: ""

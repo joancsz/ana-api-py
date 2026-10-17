@@ -1,5 +1,12 @@
 */__pycache__
+__pycache__/
 test.*
 *.ipynb
 *.xlsx
 *.csv
+*.parquet
+ana.yaml
+.pytest_cache/
+*.egg-info/
+.venv/
+out/
